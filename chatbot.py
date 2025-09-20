@@ -13,7 +13,7 @@ import tools
 load_dotenv()
 
 
-openai_api_key = os.getenv("OPENAI_API_KEY")
+openai_api_key = os.getenv("...")
 # Initialize the chat model
 llm = init_chat_model("openai:gpt-4.1")
 
