@@ -11,7 +11,7 @@ class SearchSummary(BaseModel):
 
 
 load_dotenv()
-tavily_api_key = os.getenv("TAVILY_API_KEY")
+tavily_api_key = os.getenv("...")
 
 weather_tool = get_weather
 _tavily_tool_instance = TavilySearch(max_results=2, tavily_api_key=tavily_api_key)
