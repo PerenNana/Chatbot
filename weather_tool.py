@@ -9,18 +9,12 @@ class WeatherOutput(BaseModel):
     city: str = Field(..., description="City for which the weather was retrieved")
     temperature: float = Field(..., description="Current temperature in Celsius")
     wind_speed: float = Field(..., description="Current wind speed in km/h")
-    english_answer: str = Field(..., description="A human-readable summary of the weather")
-    german_answer: str = Field(..., description="Eine menschenlesbare Zusammenfassung des Wetters")
 
 @tool(args_schema=WeatherInput)
 def get_weather(city: str) -> WeatherOutput:
     """
     Predicts the weather in a given city.
-
-    Usage: weather(city: str)
-
-    Returns:
-        WeatherOutput object if successful, otherwise an error string describing the issue.
+    Returns the current temperature and wind speed.
     """
     try:
         # Use a geocoding API to get latitude and longitude from the city name

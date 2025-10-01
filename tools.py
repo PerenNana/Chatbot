@@ -21,6 +21,11 @@ def tavily_search_wrapper(query: str) -> SearchSummary:
     Performs a web search using Tavily and returns a structured summary.
     """
     result = _tavily_tool_instance.run(query)
-    return SearchSummary(query=query, summary=result)
+    # In case the result is a dict, extract the relevant text
+    if isinstance(result, dict):
+        summary_text = result.get("summary") or str(result)
+    else:
+        summary_text = str(result)
+    return SearchSummary(query=query, summary=summary_text)
 
 tools = [tavily_search_wrapper, calculator, weather_tool]

@@ -1,2 +1,5 @@
 .env
 Chatbot/.env
+
+Chatbot/conversation_history.json
+conversation_history.json

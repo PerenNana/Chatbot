@@ -1,6 +1,6 @@
 from graph_builder import build_graph
 from dotenv import load_dotenv 
-from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.prebuilt import ToolNode
 from langgraph.graph import START, END
 from langchain.chat_models import init_chat_model
 from langgraph.checkpoint.memory import InMemorySaver
@@ -20,13 +20,37 @@ llm = init_chat_model("openai:gpt-4.1")
 # Bind tools to the language model
 llm_with_tools = llm.bind_tools(tools.tools)
 
-# Bind schema to the language model
-llm_with_tools_structured_output = llm_with_tools.with_structured_output(FinalResponse)
-
 # Create a chatbot node
 def chatbot(state: State):
-    message = llm_with_tools_structured_output.invoke(state["messages"])
-    return {"messages": [{"role": "assistant", "content": str(message)}]}
+    message = llm_with_tools.invoke(state["messages"])
+    return {"messages": [message]}
+
+# Structured output node
+def structured_output_node(state: State):
+    message = llm_with_tools.with_structured_output(FinalResponse).invoke(state["messages"])
+    # Transform message to dict if it's a Pydantic model
+    if hasattr(message, "model_dump_json"):
+        return {"messages": [{"role": "assistant", "content": message.model_dump_json()}]}
+    elif hasattr(message, "dict"):
+        import json
+        return {"messages": [{"role": "assistant", "content": json.dumps(message.dict())}]}
+    elif hasattr(message, "content"):
+        return {"messages": [{"role": "assistant", "content": message.content}]}
+    else:
+        return {"messages": [{"role": "assistant", "content": str(message)}]}
+    
+# Custom condition function to route based on tool calls
+def custom_condition(state):
+    if isinstance(state, list):
+        ai_message = state[-1]
+    elif isinstance(state, dict):
+        ai_message = state["messages"][-1]
+    else:
+        ai_message = getattr(state, "messages")[-1]
+    
+    if hasattr(ai_message, "tool_calls") and len(ai_message.tool_calls) > 0:
+        return "tools"
+    return "structured_output"
 
 # add ToolNode
 tool_node = ToolNode(tools=tools.tools)
@@ -39,15 +63,16 @@ memory_saver = InMemorySaver()
 tool_node = ToolNode(tools=tools.tools)
 nodes = [
     ("chatbot", chatbot),
-    ("tools", tool_node)
+    ("tools", tool_node), 
+    ("structured_output", structured_output_node)
 ]
 edges = [
     (START, "chatbot"),
-    ("chatbot", END),
+    ("structured_output", END),
     ("tools", "chatbot")
 ]
 conditional_edges = [
-    ("chatbot", tools_condition)
+    ("chatbot", custom_condition)
 ]
 entry_point = "chatbot"
 
@@ -58,6 +83,9 @@ graph = build_graph(
     entry_point=entry_point,
     compile_kwargs={"checkpointer": memory_saver}
 )
+
+mermaid_source = graph.get_graph().draw_mermaid()
+print(mermaid_source)
 
 thread_id = input("Thread-ID: ")
 messages = load_conversation(thread_id)
